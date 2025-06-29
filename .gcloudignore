@@ -1,0 +1,34 @@
+# Archivos de desarrollo
+.git/
+.gitignore
+.env
+.env.local
+.vscode/
+.idea/
+
+# Dependencias de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.tox/
+.coverage
+.pytest_cache/
+
+# Poetry
+poetry.lock
+pyproject.toml
+
+# Deployment scripts (no necesarios en Cloud Run)
+deployment/
+
+# README y documentación
+README.md
+*.md
+
+# Archivos temporales
+*.log
+*.tmp
+.DS_Store 

@@ -1,155 +1,273 @@
-# ADK Short Bot
+# ADK Agent Template
 
-A Python-based agent that helps shorten messages using Google's Agent Development Kit (ADK) and Vertex AI.
+Plantilla básica para desarrollar agentes con Google ADK.
 
-## Prerequisites
+## Estructura
+
+```
+├── adk_short_bot/          # Código del agente
+├── main.py                 # API FastAPI
+├── requirements.txt        # Dependencias
+├── Dockerfile             # Contenedor
+├── deploy-cloudrun.sh     # Deploy automático (build + deploy)
+├── deploy-cloudrun-image.sh # Deploy con imagen específica
+└── .env.example           # Variables de entorno
+```
+
+## Prerequisitos
 
 - Python 3.12+
-- Poetry (Python package manager)
-- Google Cloud account with Vertex AI API enabled
-- Google Cloud CLI (`gcloud`) installed and authenticated
-  - Follow the [official installation guide](https://cloud.google.com/sdk/docs/install) to install gcloud
-  - After installation, run `gcloud init` and `gcloud auth login`
+- Docker
+- Google Cloud CLI (`gcloud`)
+- Proyecto de Google Cloud con Vertex AI habilitado
 
-## Installation
+## Configuración Inicial
 
-1. Clone the repository:
+### 1. Configurar Google Cloud
 ```bash
-git clone https://github.com/bhancockio/deploy-adk-agent-engine.git
-cd adk-short-bot
-```
-
-2. Install Poetry if you haven't already:
-```bash
-curl -sSL https://install.python-poetry.org | python3 -
-```
-
-3. Install project dependencies:
-```bash
-poetry install
-```
-
-4. Activate the virtual environment:
-```bash
-source $(poetry env info --path)/bin/activate
-```
-
-## Configuration
-
-1. Create a `.env` file in the project root with the following variables:
-```bash
-GOOGLE_GENAI_USE_VERTEXAI=TRUE
-GOOGLE_CLOUD_PROJECT=your-project-id
-GOOGLE_CLOUD_LOCATION=your-location  # e.g., us-central1
-GOOGLE_CLOUD_STAGING_BUCKET=gs://your-bucket-name
-```
-
-2. Set up Google Cloud authentication:
-```bash
+# Autenticarse con Google Cloud
 gcloud auth login
-gcloud config set project your-project-id
+gcloud auth application-default login
+
+# Configurar proyecto
+gcloud config set project TU_PROYECTO_ID
+gcloud config set compute/region us-central1
+
+# Habilitar APIs necesarias
+gcloud services enable aiplatform.googleapis.com run.googleapis.com artifactregistry.googleapis.com
 ```
 
-3. Enable required APIs:
+### 2. Instalar Dependencias
 ```bash
-gcloud services enable aiplatform.googleapis.com
+# Instalar dependencias locales
+pip install -r requirements.txt
 ```
 
-## Usage
+## Uso Rápido
 
-### Local Testing
-
-1. Create a new session:
+### Desarrollo Local con Python
 ```bash
-poetry run deploy-local --create_session
+# Ejecutar directamente
+uvicorn main:app --host 0.0.0.0 --port 8080
 ```
 
-2. List all sessions:
+### Desarrollo Local con Docker
+
+#### 1. Construir Imagen
 ```bash
-poetry run deploy-local --list_sessions
+docker build -t plantilla-agent-adk .
 ```
 
-3. Get details of a specific session:
+#### 2. Ejecutar Contenedor
 ```bash
-poetry run deploy-local --get_session --session_id=your-session-id
+# Comando completo con credenciales y variables de entorno
+docker run -d --name plantilla-agent-adk \
+  -p 8081:8080 \
+  -v ~/.config/gcloud:/root/.config/gcloud \
+  -e GOOGLE_CLOUD_PROJECT=TU_PROYECTO_ID \
+  -e GOOGLE_CLOUD_LOCATION=us-central1 \
+  plantilla-agent-adk
 ```
 
-4. Send a message to shorten:
+**Notas importantes:**
+- **Puerto**: Usar 8081 para evitar conflictos con otros servicios
+- **Credenciales**: Montar `~/.config/gcloud` para autenticación
+- **Variables**: Configurar `GOOGLE_CLOUD_PROJECT` y `GOOGLE_CLOUD_LOCATION`
+
+#### 3. Verificar Funcionamiento
 ```bash
-poetry run deploy-local --send --session_id=your-session-id --message="Shorten this message: Hello, how are you doing today?"
+# Health check
+curl http://localhost:8081/
+
+# Crear sesión
+curl -X POST http://localhost:8081/sessions \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+# Chat (acortar mensaje)
+curl -X POST http://localhost:8081/chat \
+  -H "Content-Type: application/json" \
+  -d '{
+    "session_id": "tu-session-id",
+    "message": "Acorta este mensaje: Hola, ¿cómo estás hoy?"
+  }'
 ```
 
-### Remote Deployment
+## Deployment a Cloud Run
 
-1. Deploy the agent:
+### Opción 1: Deployment Automático (Recomendado para desarrollo)
+
+El script `deploy-cloudrun.sh` construye la imagen automáticamente:
+
 ```bash
-poetry run deploy-remote --create
+# Configurar variables de entorno
+export GOOGLE_CLOUD_PROJECT="tu-proyecto-id"
+export GOOGLE_CLOUD_LOCATION="us-central1"
+
+# Desplegar (construye imagen automáticamente)
+./deploy-cloudrun.sh
 ```
 
-2. Create a session:
+**Ventajas:**
+- ✅ Automático - No necesitas crear imagen manualmente
+- ✅ Simple - Un solo comando
+- ✅ Siempre actualizado - Usa el código actual
+
+### Opción 2: Deployment con Imagen Específica (Recomendado para producción)
+
+El script `deploy-cloudrun-image.sh` usa una imagen pre-construida:
+
+#### 1. Crear Repositorio (solo la primera vez)
 ```bash
-poetry run deploy-remote --create_session --resource_id=your-resource-id
+gcloud artifacts repositories create adk-agents-repo \
+  --repository-format=docker \
+  --location=us-central1 \
+  --description="Repository for ADK agents"
 ```
 
-3. List sessions:
+#### 2. Configurar Docker
 ```bash
-poetry run deploy-remote --list_sessions --resource_id=your-resource-id
+gcloud auth configure-docker us-central1-docker.pkg.dev
 ```
 
-4. Send a message:
+#### 3. Construir y Subir Imagen
 ```bash
-poetry run deploy-remote --send --resource_id=your-resource-id --session_id=your-session-id --message="Hello, how are you doing today? So far, I've made breakfast today, walkted dogs, and went to work."
+# Construir imagen AMD64
+docker build --platform linux/amd64 \
+  -t us-central1-docker.pkg.dev/TU_PROYECTO_ID/adk-agents-repo/plantilla-agent-adk:v1 .
+
+# Subir al repositorio
+docker push us-central1-docker.pkg.dev/TU_PROYECTO_ID/adk-agents-repo/plantilla-agent-adk:v1
 ```
 
-5. Clean up (delete deployment):
+#### 4. Desplegar
 ```bash
-poetry run deploy-remote --delete --resource_id=your-resource-id
+# Configurar variables de entorno
+export GOOGLE_CLOUD_PROJECT="tu-proyecto-id"
+export GOOGLE_CLOUD_LOCATION="us-central1"
+
+# Desplegar con imagen específica
+./deploy-cloudrun-image.sh
 ```
 
-## Project Structure
+**Ventajas:**
+- ✅ Control total - Sabes exactamente qué imagen se despliega
+- ✅ Reproducible - Misma imagen en todos los entornos
+- ✅ Optimizado - Imagen AMD64 para mejor rendimiento
+- ✅ Versionado - Puedes tener múltiples versiones
 
+### Comparación de Scripts
+
+| Aspecto | `deploy-cloudrun.sh` | `deploy-cloudrun-image.sh` |
+|---------|---------------------|---------------------------|
+| **Servicio** | `short-bot-service` | `plantilla-agent-adk` |
+| **Imagen** | Construida automáticamente | Específica del repositorio |
+| **Arquitectura** | Automática | AMD64 explícita |
+| **Uso** | Desarrollo | Producción |
+| **Velocidad** | Más lento (build + deploy) | Más rápido (solo deploy) |
+
+## Probar el Servicio Desplegado
+
+```bash
+# Obtener URL del servicio
+gcloud run services describe plantilla-agent-adk \
+  --region=us-central1 \
+  --format="value(status.url)"
+
+# Health check
+curl https://plantilla-agent-adk-XXXXX-uc.a.run.app/
+
+# Crear sesión
+curl -X POST https://plantilla-agent-adk-XXXXX-uc.a.run.app/sessions \
+  -H "Content-Type: application/json" -d '{}'
+
+# Chat
+curl -X POST https://plantilla-agent-adk-XXXXX-uc.a.run.app/chat \
+  -H "Content-Type: application/json" \
+  -d '{"session_id": "tu-session-id", "message": "Mensaje para acortar"}'
 ```
-adk-short-bot/
-├── adk_short_bot/          # Main package directory
-│   ├── __init__.py
-│   ├── agent.py           # Agent implementation
-│   └── prompt.py          # Prompt templates
-├── deployment/            # Deployment scripts
-│   ├── local.py          # Local testing script
-│   └── remote.py         # Remote deployment script
-├── .env                  # Environment variables
-├── poetry.lock          # Poetry lock file
-└── pyproject.toml       # Project configuration
-```
-
-## Development
-
-To add new features or modify existing ones:
-
-1. Make your changes in the relevant files
-2. Test locally using the local deployment script
-3. Deploy to remote using the remote deployment script
-4. Update documentation as needed
 
 ## Troubleshooting
 
-1. If you encounter authentication issues:
-   - Ensure you're logged in with `gcloud auth login`
-   - Verify your project ID and location in `.env`
-   - Check that the Vertex AI API is enabled
+### Problemas Comunes
 
-2. If deployment fails:
-   - Check the staging bucket exists and is accessible
-   - Verify all required environment variables are set
-   - Ensure you have the necessary permissions in your Google Cloud project
+#### 1. Error de Autenticación
+```
+GoogleAuthError: Unable to find your project
+```
+**Solución**: 
+- Verificar que `gcloud auth application-default login` esté ejecutado
+- Configurar proyecto con `gcloud config set project TU_PROYECTO_ID`
 
-## Contributing
+#### 2. Puerto Ocupado
+```
+Bind for 0.0.0.0:8080 failed: port is already allocated
+```
+**Solución**: Usar otro puerto (ej: 8081, 8082, etc.)
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+#### 3. Contenedor se Cierra
+```
+ValueError: Unable to find your project
+```
+**Solución**: 
+- Montar credenciales: `-v ~/.config/gcloud:/root/.config/gcloud`
+- Configurar variables de entorno: `-e GOOGLE_CLOUD_PROJECT=...`
 
-## License
+#### 4. Error en Deployment
+```
+ERROR: (gcloud.run.deploy) INVALID_ARGUMENT: Invalid image
+```
+**Solución**: 
+- Verificar que la imagen existe en el repositorio
+- Usar el script de deployment automático en su lugar
 
-[Your chosen license]
+### Comandos Útiles
+
+```bash
+# Ver logs del contenedor local
+docker logs plantilla-agent-adk
+
+# Ver estado del contenedor local
+docker ps
+
+# Ver logs del servicio en Cloud Run
+gcloud logs tail --service=plantilla-agent-adk
+
+# Ver información del servicio
+gcloud run services describe plantilla-agent-adk --region=us-central1
+
+# Listar imágenes en el repositorio
+gcloud artifacts docker images list us-central1-docker.pkg.dev/TU_PROYECTO_ID/adk-agents-repo
+```
+
+## Personalizar
+
+- **Agente**: Editar `adk_short_bot/agent.py`
+- **Prompts**: Editar `adk_short_bot/prompt.py`
+- **API**: Editar `main.py`
+- **Herramientas**: Agregar en `adk_short_bot/tools/`
+
+## Dependencias
+
+```
+fastapi>=0.115.14
+uvicorn>=0.32.0
+pydantic>=2.10.0
+google-cloud-aiplatform[adk,agent_engines]>=1.100.0
+google-adk>=1.5.0
+```
+
+## Workflow Recomendado
+
+### Para Desarrollo
+1. **Editar código** en `adk_short_bot/`
+2. **Test local**: `docker run -d --name plantilla-agent-adk -p 8081:8080 -v ~/.config/gcloud:/root/.config/gcloud -e GOOGLE_CLOUD_PROJECT=TU_PROYECTO_ID -e GOOGLE_CLOUD_LOCATION=us-central1 plantilla-agent-adk`
+3. **Probar**: `curl http://localhost:8081/`
+4. **Deploy rápido**: `./deploy-cloudrun.sh`
+
+### Para Producción
+1. **Desarrollo**: Editar código en `adk_short_bot/`
+2. **Test local**: Usar Docker local
+3. **Construir imagen**: `docker build --platform linux/amd64 -t us-central1-docker.pkg.dev/TU_PROYECTO_ID/adk-agents-repo/plantilla-agent-adk:v1 .`
+4. **Subir imagen**: `docker push us-central1-docker.pkg.dev/TU_PROYECTO_ID/adk-agents-repo/plantilla-agent-adk:v1`
+5. **Deploy**: `./deploy-cloudrun-image.sh`
