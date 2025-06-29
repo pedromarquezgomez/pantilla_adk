@@ -1,40 +1,38 @@
 #!/bin/bash
 
-# Script de deployment para Cloud Run
-# Asegúrate de tener configuradas las variables de entorno antes de ejecutar
+# Script de despliegue usando el comando oficial de ADK para Cloud Run
+# Basado en la implementación oficial de Google ADK
 
 set -e
 
-echo "🚀 Desplegando ADK Short Bot en Cloud Run..."
-
-# Verificar variables de entorno requeridas
+# Verificar variables de entorno
 if [ -z "$GOOGLE_CLOUD_PROJECT" ]; then
-    echo "❌ Error: GOOGLE_CLOUD_PROJECT no está configurado"
+    echo "Error: GOOGLE_CLOUD_PROJECT no está definido"
+    echo "Ejecuta: export GOOGLE_CLOUD_PROJECT=tu-proyecto-id"
     exit 1
 fi
 
 if [ -z "$GOOGLE_CLOUD_LOCATION" ]; then
-    echo "❌ Error: GOOGLE_CLOUD_LOCATION no está configurado"
+    echo "Error: GOOGLE_CLOUD_LOCATION no está definido"
+    echo "Ejecuta: export GOOGLE_CLOUD_LOCATION=us-central1"
     exit 1
 fi
 
-echo "📋 Configuración:"
-echo "   Proyecto: $GOOGLE_CLOUD_PROJECT"
-echo "   Región: $GOOGLE_CLOUD_LOCATION"
-echo "   Servicio: short-bot-service"
+# Configurar variables por defecto
+export GOOGLE_GENAI_USE_VERTEXAI=True
 
-echo "🔧 Desplegando..."
+echo "🚀 Desplegando agente ADK a Cloud Run..."
+echo "Proyecto: $GOOGLE_CLOUD_PROJECT"
+echo "Región: $GOOGLE_CLOUD_LOCATION"
 
-gcloud run deploy short-bot-service \
-  --source . \
-  --region $GOOGLE_CLOUD_LOCATION \
-  --project $GOOGLE_CLOUD_PROJECT \
-  --allow-unauthenticated \
-  --set-env-vars="GOOGLE_GENAI_USE_VERTEXAI=True" \
-  --memory 1Gi \
-  --cpu 1 \
-  --timeout 300 \
-  --max-instances 10
+# Usar el comando oficial de ADK para Cloud Run
+adk deploy cloud_run \
+    --project_id="$GOOGLE_CLOUD_PROJECT" \
+    --location="$GOOGLE_CLOUD_LOCATION" \
+    --service_name="adk-short-bot-service" \
+    --allow_unauthenticated \
+    --with_ui
 
-echo "✅ ¡Deployment completado!"
-echo "🌐 Tu servicio estará disponible en la URL que aparece arriba" 
+echo "✅ Despliegue completado!"
+echo "🌐 Tu agente está disponible en la URL mostrada arriba"
+echo "📝 Para ver logs: gcloud run logs tail adk-short-bot-service --region=$GOOGLE_CLOUD_LOCATION" 
