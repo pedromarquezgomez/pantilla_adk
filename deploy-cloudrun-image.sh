@@ -19,8 +19,8 @@ if [ -z "$GOOGLE_CLOUD_LOCATION" ]; then
 fi
 
 # Configuración de la imagen
-IMAGE_URL="us-central1-docker.pkg.dev/sumy-464008/adk-agents-repo/plantilla-agent-adk:v1"
-SERVICE_NAME="plantilla-agent-adk"
+IMAGE_URL="gcr.io/sumy-464008/adk-short-bot:latest"
+SERVICE_NAME="adk-short-bot"
 
 echo "📋 Configuración:"
 echo "   Proyecto: $GOOGLE_CLOUD_PROJECT"
@@ -44,4 +44,4 @@ gcloud run deploy $SERVICE_NAME \
 
 echo "✅ ¡Deployment completado!"
 echo "🌐 Tu servicio estará disponible en la URL que aparece arriba"
-echo "🔗 Para probar: curl https://plantilla-agent-adk-XXXXX-uc.a.run.app/" 
+echo "🔗 Para probar: curl https://adk-short-bot-XXXXX-uc.a.run.app/" 

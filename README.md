@@ -302,3 +302,156 @@ google-adk>=1.5.0
 3. **Construir imagen**: `docker build --platform linux/amd64 -t us-central1-docker.pkg.dev/TU_PROYECTO_ID/adk-agents-repo/adk-short-bot:v1 .`
 4. **Subir imagen**: `docker push us-central1-docker.pkg.dev/TU_PROYECTO_ID/adk-agents-repo/adk-short-bot:v1`
 5. **Deploy**: `./deploy-cloudrun-image.sh`
+
+
+#RECUERDOS DESPLEGUE
+## 📋 **Resumen Completo del Despliegue - Pasos y Comandos**
+
+Aquí tienes todos los pasos que ejecutamos para desplegar exitosamente tu agente ADK en Cloud Run:
+
+---
+
+## **🔧 1. Construcción de la Imagen AMD64**
+
+### **Paso 1.1: Construir imagen optimizada para Cloud Run**
+```bash
+docker build --platform linux/amd64 -t adk-short-bot:amd64 .
+```
+- **Resultado**: Imagen de 143MB optimizada para arquitectura AMD64
+- **ID**: `1632457af69b`
+
+### **Paso 1.2: Verificar imágenes creadas**
+```bash
+docker images | grep adk-short-bot
+```
+- **Resultado**: 
+  - `adk-short-bot:amd64` (143MB) - Nueva imagen optimizada
+  - `adk-short-bot:latest` (781MB) - Imagen local anterior
+
+---
+
+## **📤 2. Subida al Repositorio de Google**
+
+### **Paso 2.1: Configurar Docker para Google Cloud**
+```bash
+gcloud auth configure-docker
+```
+- **Resultado**: Docker configurado para autenticarse con Google Container Registry
+
+### **Paso 2.2: Etiquetar imagen para Google Container Registry**
+```bash
+docker tag adk-short-bot:amd64 gcr.io/sumy-464008/adk-short-bot:latest
+```
+- **Resultado**: Imagen etiquetada con formato GCR
+
+### **Paso 2.3: Subir imagen al repositorio**
+```bash
+docker push gcr.io/sumy-464008/adk-short-bot:latest
+```
+- **Resultado**: Imagen subida exitosamente con digest `sha256:1632457af69bde060bde065204a0feebb453aca348e5dfaa592abae540f856db`
+
+---
+
+## **⚙️ 3. Configuración del Script de Despliegue**
+
+### **Paso 3.1: Actualizar script con la imagen correcta**
+```bash
+# Editamos deploy-cloudrun-image.sh para cambiar:
+IMAGE_URL="gcr.io/sumy-464008/adk-short-bot:latest"
+SERVICE_NAME="adk-short-bot"
+```
+
+### **Paso 3.2: Hacer script ejecutable**
+```bash
+chmod +x deploy-cloudrun-image.sh
+```
+
+---
+
+## **🚀 4. Despliegue a Cloud Run**
+
+### **Paso 4.1: Configurar variables de entorno**
+```bash
+export GOOGLE_CLOUD_PROJECT="sumy-464008"
+export GOOGLE_CLOUD_LOCATION="us-central1"
+```
+
+### **Paso 4.2: Ejecutar despliegue**
+```bash
+./deploy-cloudrun-image.sh
+```
+
+**Este script ejecutó internamente:**
+```bash
+gcloud run deploy adk-short-bot \
+  --image gcr.io/sumy-464008/adk-short-bot:latest \
+  --region us-central1 \
+  --project sumy-464008 \
+  --allow-unauthenticated \
+  --set-env-vars="GOOGLE_GENAI_USE_VERTEXAI=True,GOOGLE_CLOUD_PROJECT=sumy-464008,GOOGLE_CLOUD_LOCATION=us-central1" \
+  --memory 1Gi \
+  --cpu 1 \
+  --timeout 300 \
+  --max-instances 10 \
+  --platform managed
+```
+
+---
+
+## **✅ 5. Verificación del Servicio**
+
+### **Paso 5.1: Verificar endpoints**
+```bash
+# Probar documentación API
+curl https://adk-short-bot-904733965277.us-central1.run.app/docs
+
+# Verificar interfaz web
+curl -s https://adk-short-bot-904733965277.us-central1.run.app/dev-ui/ | head -20
+```
+
+---
+
+## **📊 Resultado Final**
+
+### **🎯 Servicio Desplegado:**
+- **Nombre**: `adk-short-bot`
+- **Revisión**: `adk-short-bot-00001-thw`
+- **URL**: `https://adk-short-bot-904733965277.us-central1.run.app`
+
+### **⚙️ Configuración:**
+- **Imagen**: `gcr.io/sumy-464008/adk-short-bot:latest` (143MB)
+- **Memoria**: 1GB
+- **CPU**: 1 núcleo
+- **Timeout**: 300s
+- **Máx instancias**: 10
+- **Acceso**: Público
+
+### **🌐 URLs Funcionales:**
+1. **Interfaz Web**: `https://adk-short-bot-904733965277.us-central1.run.app/dev-ui/`
+2. **API Docs**: `https://adk-short-bot-904733965277.us-central1.run.app/docs`
+3. **API Base**: `https://adk-short-bot-904733965277.us-central1.run.app/`
+
+### **💡 Variables de Entorno Configuradas:**
+- `GOOGLE_GENAI_USE_VERTEXAI=True`
+- `GOOGLE_CLOUD_PROJECT=sumy-464008`
+- `GOOGLE_CLOUD_LOCATION=us-central1`
+
+---
+
+## **🔑 Comandos Clave para Futuras Actualizaciones**
+
+```bash
+# 1. Reconstruir imagen
+docker build --platform linux/amd64 -t adk-short-bot:amd64 .
+
+# 2. Re-etiquetar y subir
+docker tag adk-short-bot:amd64 gcr.io/sumy-464008/adk-short-bot:latest
+docker push gcr.io/sumy-464008/adk-short-bot:latest
+
+# 3. Re-desplegar
+export GOOGLE_CLOUD_PROJECT="sumy-464008"
+export GOOGLE_CLOUD_LOCATION="us-central1"
+./deploy-cloudrun-image.sh
+```
+
+¡Tu agente ADK está ahora completamente desplegado y funcionando en producción! 🎉

@@ -1,3 +1,8 @@
+from pydantic import BaseModel
+
+class MessageInput(BaseModel):
+    text: str
+
 def count_characters(message: str) -> int:
     """
     Count the number of characters in a message.
