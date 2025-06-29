@@ -11,6 +11,9 @@ Plantilla básica para desarrollar agentes con Google ADK.
 ├── Dockerfile             # Contenedor
 ├── deploy-cloudrun.sh     # Deploy automático (build + deploy)
 ├── deploy-cloudrun-image.sh # Deploy con imagen específica
+├── test_service.py        # Script de prueba Python
+├── test_service.sh        # Script de prueba Bash
+├── TESTING.md             # Documentación de pruebas
 └── .env.example           # Variables de entorno
 ```
 
@@ -23,7 +26,27 @@ Plantilla básica para desarrollar agentes con Google ADK.
 
 ## Configuración Inicial
 
-### 1. Configurar Google Cloud
+### 1. Clonar y Configurar Entorno
+
+```bash
+# Clonar el repositorio
+git clone https://github.com/pedromarquezgomez/pantilla_adk.git
+cd pantilla_adk
+
+# Crear entorno virtual
+python3 -m venv .venv
+
+# Activar entorno virtual
+# En macOS/Linux:
+source .venv/bin/activate
+# En Windows:
+# .venv\Scripts\activate
+
+# Instalar dependencias
+pip install -r requirements.txt
+```
+
+### 2. Configurar Google Cloud
 ```bash
 # Autenticarse con Google Cloud
 gcloud auth login
@@ -37,16 +60,23 @@ gcloud config set compute/region us-central1
 gcloud services enable aiplatform.googleapis.com run.googleapis.com artifactregistry.googleapis.com
 ```
 
-### 2. Instalar Dependencias
+### 3. Variables de Entorno (Opcional)
 ```bash
-# Instalar dependencias locales
-pip install -r requirements.txt
+# Copiar archivo de ejemplo
+cp .env.example .env
+
+# Editar variables según tu configuración
+# GOOGLE_CLOUD_PROJECT=tu-proyecto-id
+# GOOGLE_CLOUD_LOCATION=us-central1
 ```
 
 ## Uso Rápido
 
 ### Desarrollo Local con Python
 ```bash
+# Asegúrate de tener el entorno virtual activado
+source .venv/bin/activate
+
 # Ejecutar directamente
 uvicorn main:app --host 0.0.0.0 --port 8080
 ```
@@ -191,7 +221,16 @@ curl -X POST https://plantilla-agent-adk-XXXXX-uc.a.run.app/chat \
 
 ### Problemas Comunes
 
-#### 1. Error de Autenticación
+#### 1. Error de Entorno Virtual
+```
+ModuleNotFoundError: No module named 'fastapi'
+```
+**Solución**: 
+- Verificar que el entorno virtual esté activado: `source .venv/bin/activate`
+- Reinstalar dependencias: `pip install -r requirements.txt`
+- Verificar que estés en el directorio correcto
+
+#### 2. Error de Autenticación
 ```
 GoogleAuthError: Unable to find your project
 ```
@@ -199,13 +238,13 @@ GoogleAuthError: Unable to find your project
 - Verificar que `gcloud auth application-default login` esté ejecutado
 - Configurar proyecto con `gcloud config set project TU_PROYECTO_ID`
 
-#### 2. Puerto Ocupado
+#### 3. Puerto Ocupado
 ```
 Bind for 0.0.0.0:8080 failed: port is already allocated
 ```
 **Solución**: Usar otro puerto (ej: 8081, 8082, etc.)
 
-#### 3. Contenedor se Cierra
+#### 4. Contenedor se Cierra
 ```
 ValueError: Unable to find your project
 ```
@@ -213,7 +252,7 @@ ValueError: Unable to find your project
 - Montar credenciales: `-v ~/.config/gcloud:/root/.config/gcloud`
 - Configurar variables de entorno: `-e GOOGLE_CLOUD_PROJECT=...`
 
-#### 4. Error en Deployment
+#### 5. Error en Deployment
 ```
 ERROR: (gcloud.run.deploy) INVALID_ARGUMENT: Invalid image
 ```
@@ -224,6 +263,14 @@ ERROR: (gcloud.run.deploy) INVALID_ARGUMENT: Invalid image
 ### Comandos Útiles
 
 ```bash
+# Gestión del entorno virtual
+python3 -m venv .venv                    # Crear entorno virtual
+source .venv/bin/activate                # Activar entorno (macOS/Linux)
+deactivate                               # Desactivar entorno
+pip list                                 # Ver paquetes instalados
+pip install -r requirements.txt          # Instalar dependencias
+pip freeze > requirements.txt            # Actualizar requirements.txt
+
 # Ver logs del contenedor local
 docker logs plantilla-agent-adk
 
