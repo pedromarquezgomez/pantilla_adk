@@ -99,23 +99,12 @@
 import { ref, onMounted, nextTick, computed } from 'vue'
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from 'firebase/auth'
 import { getFirestore, doc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore'
-import { initializeApp } from 'firebase/app'
+import { auth, db } from './firebase'
 import axios from 'axios'
 import { marked } from 'marked'
 import Login from './components/Login.vue'
 import WineMenu from './components/WineMenu.vue'
 import ConsentBanner from './components/ConsentBanner.vue'
-
-// --- Configuración de Firebase ---
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-};
-
-const firebaseApp = initializeApp(firebaseConfig);
-const auth = getAuth(firebaseApp);
-const db = getFirestore(firebaseApp);
 
 // --- Estado Reactivo ---
 const user = ref(null)
@@ -139,8 +128,6 @@ const buildConversationHistory = () => {
       timestamp: new Date().toISOString()
     }))
 }
-
-
 
 // --- Lógica de Guardado en Firestore ---
 const saveUserToFirestore = async (userData) => {
@@ -205,8 +192,6 @@ onMounted(() => {
     }
   })
 })
-
-
 
 const handleSignOut = async () => {
   await signOut(auth)

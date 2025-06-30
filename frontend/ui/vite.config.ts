@@ -8,6 +8,10 @@ export default defineConfig({
   server: {
     port: 3000,
     cors: true,
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+      'Cross-Origin-Embedder-Policy': 'unsafe-none'
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
@@ -24,6 +28,16 @@ export default defineConfig({
             console.error('Proxy error:', err);
           });
         }
+      }
+    }
+  },
+  publicDir: 'public',
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    rollupOptions: {
+      input: {
+        main: 'index.html'
       }
     }
   }

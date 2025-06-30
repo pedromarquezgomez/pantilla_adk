@@ -22,34 +22,47 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut as firebaseSignOut, User } from 'firebase/auth';
-
-// Inicializa Firebase (asume que ya está hecho en tu main.ts o un plugin)
-const auth = getAuth();
-const googleProvider = new GoogleAuthProvider();
+import { ref, onMounted, onUnmounted } from 'vue';
+import { User } from 'firebase/auth';
+import { authService } from '../services/authService';
 
 const user = ref<User | null>(null);
+let unsubscribe: (() => void) | null = null;
 
 onMounted(() => {
-  onAuthStateChanged(auth, (newUser) => {
+  // Usar el servicio de autenticación
+  unsubscribe = authService.onAuthStateChange((newUser) => {
     user.value = newUser;
   });
 });
 
+onUnmounted(() => {
+  if (unsubscribe) {
+    unsubscribe();
+  }
+});
+
 const signInWithGoogle = async () => {
   try {
-    await signInWithPopup(auth, googleProvider);
-  } catch (error) {
+    await authService.signInWithGoogle();
+  } catch (error: any) {
     console.error('Error al iniciar sesión:', error);
+    
+    // Mostrar mensaje de error más amigable
+    if (error.message === 'Redirect iniciado') {
+      console.log('Redirigiendo a Google para autenticación...');
+    } else {
+      alert('Error al iniciar sesión. Por favor, intenta de nuevo.');
+    }
   }
 };
 
 const signOut = async () => {
   try {
-    await firebaseSignOut(auth);
+    await authService.signOut();
   } catch (error) {
     console.error('Error al cerrar sesión:', error);
+    alert('Error al cerrar sesión. Por favor, intenta de nuevo.');
   }
 };
 </script>
