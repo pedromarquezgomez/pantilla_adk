@@ -24,6 +24,7 @@ export interface Conversation {
   timestamp: Date;
 }
 
+// --- SERVICIO LEGACY (mantener compatibilidad) ---
 export const saveConversation = async (conversation: Omit<Conversation, 'id'>) => {
   try {
     const docRef = await addDoc(collection(db, 'conversations'), {
@@ -53,6 +54,56 @@ export const getUserConversations = async (userId: string): Promise<Conversation
     })) as Conversation[];
   } catch (error) {
     console.error('Error al obtener las conversaciones:', error);
+    throw error;
+  }
+};
+
+// --- SERVICIO NUEVO (usar esta estructura) ---
+export const saveConversationToRestaurant = async (
+  restaurantSlug: string,
+  conversation: Omit<Conversation, 'id'>
+) => {
+  try {
+    const docRef = await addDoc(collection(db, `restaurants/${restaurantSlug}/chat_history`), {
+      userId: conversation.userId,
+      userName: 'Usuario', // Se puede mejorar obteniendo el nombre del usuario
+      message: conversation.query,
+      response: conversation.response,
+      metadata: conversation.metadata,
+      createdAt: Timestamp.fromDate(conversation.timestamp)
+    });
+    return docRef.id;
+  } catch (error) {
+    console.error('Error al guardar la conversación en el restaurante:', error);
+    throw error;
+  }
+};
+
+export const getUserConversationsFromRestaurant = async (
+  restaurantSlug: string,
+  userId: string
+): Promise<Conversation[]> => {
+  try {
+    const q = query(
+      collection(db, `restaurants/${restaurantSlug}/chat_history`),
+      where('userId', '==', userId),
+      orderBy('createdAt', 'desc')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        userId: data.userId,
+        query: data.message,
+        response: data.response,
+        metadata: data.metadata,
+        timestamp: data.createdAt.toDate()
+      };
+    }) as Conversation[];
+  } catch (error) {
+    console.error('Error al obtener las conversaciones del restaurante:', error);
     throw error;
   }
 }; 

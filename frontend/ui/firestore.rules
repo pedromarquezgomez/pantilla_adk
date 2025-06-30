@@ -1,0 +1,41 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- ESTRUCTURA LEGACY (compatibilidad) ---
+    // Permitir acceso a usuarios y conversaciones legacy
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    match /conversations/{conversationId} {
+      allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+    }
+
+    // --- NUEVA ESTRUCTURA POR RESTAURANTES ---
+    match /restaurants/{restaurantSlug} {
+
+      // --- CONFIGURACIÓN Y MENÚ ---
+      // Cualquiera puede LEER la configuración y el menú (necesario para la UI).
+      // Solo un administrador de ESTE restaurante puede ESCRIBIR.
+      match /config/{docId} {
+        allow read: if true;
+        allow write: if request.auth != null && request.auth.token.admin == true && request.auth.token.restaurant == restaurantSlug;
+      }
+      match /menu_items/{itemId} {
+        allow read: if true;
+        allow write: if request.auth != null && request.auth.token.admin == true && request.auth.token.restaurant == restaurantSlug;
+      }
+
+      // --- HISTORIAL DE CHAT ---
+      // Solo usuarios autenticados (clientes) pueden CREAR un nuevo historial de chat.
+      // Solo el usuario que creó el chat puede LEER y ESCRIBIR en él.
+      match /chat_history/{chatId} {
+        allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+        allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      }
+    }
+  }
+} 
