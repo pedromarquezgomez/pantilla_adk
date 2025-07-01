@@ -2,13 +2,14 @@ import {
   GoogleAuthProvider, 
   signInWithPopup, 
   signInWithRedirect,
+  signInWithEmailAndPassword,
   onAuthStateChanged, 
   signOut as firebaseSignOut, 
   User,
   AuthError,
   browserPopupRedirectResolver
 } from 'firebase/auth';
-import { auth } from '../firebase';
+import { auth } from '@/firebase';
 
 export class AuthService {
   private static instance: AuthService;
@@ -28,6 +29,9 @@ export class AuthService {
     return AuthService.instance;
   }
 
+  /**
+   * Inicia sesión con Google (para clientes)
+   */
   async signInWithGoogle(): Promise<User> {
     try {
       // Intentar primero con popup
@@ -55,6 +59,23 @@ export class AuthService {
     }
   }
 
+  /**
+   * Inicia sesión con email y contraseña (para administradores)
+   */
+  async signInAsAdmin(email: string, password: string): Promise<User> {
+    try {
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      console.log('Login exitoso como administrador:', result.user.email);
+      return result.user;
+    } catch (error: any) {
+      console.error('Error al iniciar sesión como administrador:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Cierra la sesión del usuario actual
+   */
   async signOut(): Promise<void> {
     try {
       await firebaseSignOut(auth);
@@ -65,18 +86,49 @@ export class AuthService {
     }
   }
 
+  /**
+   * Observador que notifica cambios en el estado de autenticación
+   */
   onAuthStateChange(callback: (user: User | null) => void): () => void {
     return onAuthStateChanged(auth, callback);
   }
 
+  /**
+   * Obtiene el usuario actual
+   */
   getCurrentUser(): User | null {
     return auth.currentUser;
   }
 
+  /**
+   * Verifica si el usuario está autenticado
+   */
   isAuthenticated(): boolean {
     return auth.currentUser !== null;
+  }
+
+  /**
+   * Verifica si el usuario es administrador
+   */
+  async isAdmin(): Promise<boolean> {
+    try {
+      const user = auth.currentUser;
+      if (!user) return false;
+      
+      const tokenResult = await user.getIdTokenResult();
+      return tokenResult.claims.admin === true;
+    } catch (error) {
+      console.error('Error al verificar si es administrador:', error);
+      return false;
+    }
   }
 }
 
 // Exportar instancia singleton
-export const authService = AuthService.getInstance(); 
+export const authService = AuthService.getInstance();
+
+// Exportar funciones individuales para compatibilidad
+export const signInWithGoogle = () => authService.signInWithGoogle();
+export const signInAsAdmin = (email: string, password: string) => authService.signInAsAdmin(email, password);
+export const signOutUser = () => authService.signOut();
+export const onAuthStateChange = (callback: (user: User | null) => void) => authService.onAuthStateChange(callback); 
