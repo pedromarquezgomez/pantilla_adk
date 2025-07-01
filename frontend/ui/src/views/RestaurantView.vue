@@ -104,6 +104,7 @@ import Login from '@/components/Login.vue'
 import WineMenu from '@/components/WineMenu.vue'
 import ConsentBanner from '@/components/ConsentBanner.vue'
 import { saveConversationToRestaurant } from '@/services/conversationService'
+import { getRestaurantConfig, type RestaurantConfig } from '@/services/restaurantService'
 
 // --- Props y Route ---
 const route = useRoute()
@@ -122,6 +123,8 @@ const conversationHistory = ref([])
 const userPreferences = ref({})
 const hasShownWelcome = ref(false)
 const showWineMenu = ref(false)
+const restaurant = ref<RestaurantConfig | null>(null)
+const isLoadingRestaurant = ref(false)
 
 // --- Gestión de Memoria Local ---
 const buildConversationHistory = () => {
@@ -161,20 +164,62 @@ const saveConversationToFirestore = async (question: string, answer: string) => 
   }
 };
 
+// --- Función para cargar información del restaurante ---
+const loadRestaurantInfo = async () => {
+  if (!restaurantSlug) return;
+  
+  isLoadingRestaurant.value = true;
+  try {
+    const restaurantData = await getRestaurantConfig(restaurantSlug);
+    restaurant.value = restaurantData;
+    
+    console.log('🏪 Información del restaurante cargada:', restaurantData);
+  } catch (error) {
+    console.error('Error al cargar información del restaurante:', error);
+    // Fallback: usar slug como nombre
+    restaurant.value = {
+      name: restaurantSlug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+      description: '',
+      address: '',
+      phone: '',
+      email: '',
+      openingHours: {},
+      theme: {
+        primaryColor: '#6F1A07',
+        secondaryColor: '#2B2118',
+        fontFamily: 'Inter'
+      },
+      features: {
+        chatEnabled: true,
+        reservationsEnabled: false,
+        deliveryEnabled: false
+      },
+      createdAt: new Date() as any,
+      updatedAt: new Date() as any
+    };
+  } finally {
+    isLoadingRestaurant.value = false;
+  }
+};
+
 // --- Lógica de Autenticación ---
 let unsubscribe: (() => void) | null = null;
 
-onMounted(() => {
+onMounted(async () => {
+  // Cargar información del restaurante
+  await loadRestaurantInfo();
+  
   // Inicializar el store de autenticación
   unsubscribe = authStore.init();
   
   // Mostrar mensaje de bienvenida cuando el usuario se autentique
   if (authStore.isAuthenticated && messages.value.length === 0 && !hasShownWelcome.value) {
     const firstName = authStore.userName ? authStore.userName.split(' ')[0] : 'Usuario';
+    const restaurantName = restaurant.value?.name || 'este restaurante';
     messages.value.push({
       id: Date.now(),
       role: 'bot',
-      text: `¡Bienvenido, ${firstName}! Soy Sumy, tu sumiller digital. Si tienes cualquier duda sobre la carta de vinos, un maridaje o simplemente te apetece que te sorprenda, no dudes en preguntarme.`
+      text: `¡Bienvenido, ${firstName}! Soy Sumy, tu sumiller digital de ${restaurantName}. Si tienes cualquier duda sobre la carta de vinos, un maridaje o simplemente te apetece que te sorprenda, no dudes en preguntarme.`
     });
     hasShownWelcome.value = true;
   }
@@ -331,7 +376,12 @@ const handleConsentUpdate = (consentRecord: any) => {
   }
 }
 
-const appName = computed(() => "Sumy")
+const appName = computed(() => {
+  if (isLoadingRestaurant.value) {
+    return "Cargando...";
+  }
+  return restaurant.value?.name || restaurantSlug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+})
 </script>
 
 <style>
